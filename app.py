@@ -9,6 +9,33 @@ import urllib.parse
 import requests
 import tempfile
 
+# catalogo_millex_app.py
+
+import streamlit as st
+import pandas as pd
+from openpyxl import load_workbook
+from pathlib import Path
+from PIL import Image
+import io
+import urllib.parse
+import requests
+import tempfile
+
+# ----------------------------------------------------------------------------- 
+# Configuración general de la app (antes que nada) 
+# ----------------------------------------------------------------------------- 
+
+st.set_page_config(page_title="Catálogo Millex", page_icon="🐾", layout="wide", initial_sidebar_state="expanded")
+
+# Desactivar elementos de Streamlit (menú, footer, botón desplegar, corona roja)
+st.markdown("""
+    <style>
+    #MainMenu, footer, .stDeployButton, .viewerBadge_container__1QSob {
+        display: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # -----------------------------------------------------------------------------
 # 1. Descargar el Excel público desde Google Sheets y cachearlo
 # -----------------------------------------------------------------------------
