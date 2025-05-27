@@ -1,5 +1,4 @@
 # catalogo_millex_app.py
-
 import streamlit as st
 import pandas as pd
 from openpyxl import load_workbook
@@ -11,9 +10,9 @@ import requests
 import tempfile
 
 
-# -----------------------------------------------------------------------------
-# 1. Descargar el Excel público desde Google Sheets y cachearlo
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------- 
+# 1. Descargar el Excel público desde Google Sheets y cachearlo 
+# ----------------------------------------------------------------------------- 
 
 @st.cache_data(show_spinner=False)
 def fetch_excel(file_id: str) -> Path:
@@ -27,9 +26,9 @@ def fetch_excel(file_id: str) -> Path:
     return tmp_path
 
 
-# -----------------------------------------------------------------------------
-# 2. Cargar productos e imágenes a partir de un .xlsx local
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------- 
+# 2. Cargar productos e imágenes a partir de un .xlsx local 
+# ----------------------------------------------------------------------------- 
 
 @st.cache_data(show_spinner=False)
 def load_products(xls_path: str) -> pd.DataFrame:
@@ -66,20 +65,19 @@ def load_products(xls_path: str) -> pd.DataFrame:
     return df
 
 
-# -----------------------------------------------------------------------------
-# 3. Configuración general de la app
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------- 
+# 3. Configuración general de la app 
+# ----------------------------------------------------------------------------- 
 
 st.set_page_config(
     page_title="Catálogo Millex",
     page_icon="🐾",
     layout="wide",
     initial_sidebar_state="auto",
-    # Esto vacía el menú … pero igual lo ocultamos con CSS abajo
     menu_items={"Get Help": None, "Report a bug": None, "About": None},
 )
 
-# ---- 3.a  Ocultar menús/footers/logo ----------------------------------------------------------------
+# ---- 3.a  Ocultar menús/footers/logo/corona ----------------------------------
 hide_streamlit_style = """
 <style>
 /* Oculta el menú hamburguesa */
@@ -90,12 +88,16 @@ footer {visibility: hidden;}
 header {visibility: hidden;}
 /* Oculta la barra de estado / “running” */
 div[data-testid="stStatusWidget"] {visibility: hidden;}
+/* Oculta la corona roja (viewer badge) */
+.viewerBadge_container__1QSob {display: none !important;}
+/* Oculta el botón de deploy (a veces acompaña la corona) */
+.stDeployButton {display: none !important;}
 /* Opcional: achica padding top */
 .block-container {padding-top: 1rem;}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-# ------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 st.title("🐾 Catálogo de productos Millex")
 
@@ -108,9 +110,9 @@ FILE_IDS = {
     "Línea Bombas de Acuario": "1DiXE5InuxMjZio6HD1nkwtQZe8vaGcSh",
 }
 
-# -----------------------------------------------------------------------------
-# 4. Selector de línea y carga de datos
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------- 
+# 4. Selector de línea y carga de datos 
+# ----------------------------------------------------------------------------- 
 
 st.sidebar.header("Seleccioná una línea")
 linea = st.sidebar.selectbox("Línea de productos:", list(FILE_IDS.keys()))
@@ -121,9 +123,9 @@ df = load_products(str(xls_path))
 # Estado global del carrito (vive en la sesión)
 cart: dict = st.session_state.setdefault("cart", {})
 
-# -----------------------------------------------------------------------------
-# 5. Grid de productos (2 por fila)
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------- 
+# 5. Grid de productos (2 por fila) 
+# ----------------------------------------------------------------------------- 
 
 for i in range(0, len(df), 2):
     cols = st.columns(2)
@@ -159,9 +161,9 @@ for i in range(0, len(df), 2):
             elif prod.codigo in cart:
                 cart.pop(prod.codigo)
 
-# -----------------------------------------------------------------------------
-# 6. Carrito en la barra lateral
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------- 
+# 6. Carrito en la barra lateral 
+# ----------------------------------------------------------------------------- 
 
 st.sidebar.markdown("---")
 st.sidebar.header("🛒 Carrito")
@@ -193,7 +195,7 @@ if cart:
     # ---------- Botón vaciar carrito -------------
     if st.sidebar.button("🗑️ Vaciar carrito"):
         cart.clear()
-        # Poner en cero todos los number_input que se crearon
+        # Poner en cero todos los number_input creados
         for k in list(st.session_state.keys()):
             if "-" in k and isinstance(st.session_state[k], int):
                 st.session_state[k] = 0
@@ -201,6 +203,7 @@ if cart:
     # ---------------------------------------------
 else:
     st.sidebar.write("Todavía no agregaste productos.")
+
 
 
 
