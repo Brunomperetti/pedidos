@@ -19,10 +19,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Estilo personalizado
+# Eliminar logos, botones y badge
 st.markdown("""
 <style>
-/* Ocultar logos y botones de Streamlit */
 #MainMenu, footer, header {visibility: hidden;}
 .viewerBadge_container__1QSob,
 .viewerBadge_container__rGiy7,
@@ -30,35 +29,18 @@ a[href="https://streamlit.io"],
 div[class^="viewerBadge_container"],
 .stDeployButton {display: none !important;}
 .block-container {padding-top: 1rem;}
-
-/* BOTÓN FLOTANTE MEJORADO 🛒 */
+/* Botón carrito flotante */
 .carrito-btn {
     position: fixed;
-    bottom: 20px;
+    top: 20px;
     right: 20px;
     background-color: #f63366;
     color: white;
-    padding: 16px 20px;
-    border-radius: 30px;
+    padding: 12px 18px;
+    border-radius: 8px;
     font-weight: bold;
-    font-size: 18px;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.3);
     z-index: 9999;
     cursor: pointer;
-    transition: transform 0.2s ease-in-out;
-}
-.carrito-btn:hover {
-    transform: scale(1.05);
-}
-
-/* Responsivo para pantallas chicas */
-@media screen and (max-width: 768px) {
-    .carrito-btn {
-        font-size: 16px;
-        padding: 14px 18px;
-        bottom: 15px;
-        right: 15px;
-    }
 }
 </style>
 """, unsafe_allow_html=True)
