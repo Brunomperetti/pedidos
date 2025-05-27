@@ -41,12 +41,11 @@ def load_products(xls_path: str) -> pd.DataFrame:
     # Mapa: Nº de fila -> bytes de la imagen
     img_map: dict[int, bytes] = {}
     for img in ws._images:
-        # openpyxl usa índice base 0 → sumamos 1 para obtener la fila real
-        row = img.anchor._from.row + 1
+        row = img.anchor._from.row + 1   # openpyxl usa índice base 0
         if hasattr(img, "_data"):
             img_map[row] = img._data()
 
-    # Leer los datos a partir de la fila 3 (incluida)
+    # Leer los datos a partir de la fila 3
     rows: list[dict] = []
     for idx, row in enumerate(ws.iter_rows(min_row=3, values_only=True), start=3):
         if not row[1]:          # Si no hay código, cortamos.
@@ -69,8 +68,35 @@ def load_products(xls_path: str) -> pd.DataFrame:
 # 3. Configuración general de la app
 # -----------------------------------------------------------------------------
 
-st.set_page_config(page_title="Catálogo Millex", page_icon="🐾", layout="wide")
+st.set_page_config(
+    page_title="Catálogo Millex",
+    page_icon="🐾",
+    layout="wide",
+    initial_sidebar_state="auto",
+    # Esto vacía el menú … pero igual lo ocultamos con CSS abajo
+    menu_items={"Get Help": None, "Report a bug": None, "About": None},
+)
+
+# ---- 3.a  Ocultar menús/footers/logo ----------------------------------------------------------------
+hide_streamlit_style = """
+<style>
+/* Oculta el menú hamburguesa */
+#MainMenu {visibility: hidden;}
+/* Oculta el footer "Made with Streamlit" */
+footer {visibility: hidden;}
+/* Oculta la barra superior (incluye logo GH en algunos temas) */
+header {visibility: hidden;}
+/* Oculta la barra de estado / “running” */
+div[data-testid="stStatusWidget"] {visibility: hidden;}
+/* Opcional: achica padding top */
+.block-container {padding-top: 1rem;}
+</style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+# ------------------------------------------------------------------------------------------------------
+
 st.title("🐾 Catálogo de productos Millex")
+
 
 # Mapeo línea → ID de la Google Sheet pública
 FILE_IDS = {
@@ -157,10 +183,22 @@ if cart:
 
     link = f"https://wa.me/5493516434765?text={urllib.parse.quote(mensaje)}"
 
+    # Botón confirmar
     if st.sidebar.button("Confirmar pedido por WhatsApp"):
         st.sidebar.success("¡Pedido listo para enviar por WhatsApp!")
         st.sidebar.markdown(f"[📲 Enviar pedido →]({link})", unsafe_allow_html=True)
+
+    # ---------- Botón vaciar carrito -------------
+    if st.sidebar.button("🗑️ Vaciar carrito"):
+        cart.clear()
+        # Poner en cero todos los number_input que se crearon
+        for k in list(st.session_state.keys()):
+            if "-" in k and isinstance(st.session_state[k], int):
+                st.session_state[k] = 0
+        st.experimental_rerun()
+    # ---------------------------------------------
 else:
     st.sidebar.write("Todavía no agregaste productos.")
+
 
 
