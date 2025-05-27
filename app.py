@@ -9,64 +9,76 @@ import urllib.parse
 import requests
 import tempfile
 
-# -----------------------------------------------------------------------------
-# Configuración general de la app
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Configuración general
+# ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="Catálogo Millex",
     page_icon="🐾",
     layout="wide",
-    initial_sidebar_state="expanded",   # Abre el carrito al cargar
+    initial_sidebar_state="collapsed",  # Arranca colapsada (el botón la abre)
     menu_items={"Get Help": None, "Report a bug": None, "About": None},
 )
 
-# ---- Ocultar menús / logos / corona -----------------------------------------
+# ---- CSS global (oculta logos + añade FAB carrito móvil) ---------------------
 st.markdown("""
 <style>
-/* Menú hamburguesa y footer */
-#MainMenu, footer {visibility: hidden;}
-/* Barra superior (logo GH) */
-header {visibility: hidden;}
-/* Barra “running” */
-div[data-testid="stStatusWidget"] {visibility: hidden;}
-/* Viewer badge (“Hosted with Streamlit”) — múltiples variantes */
+/* Ocultar menús / logos */
+#MainMenu, footer, header {visibility: hidden;}
 .viewerBadge_container__1QSob,
 .viewerBadge_container__rGiy7,
 a[href="https://streamlit.io"],
 div[class^="viewerBadge_container"],
 .stDeployButton {display: none !important;}
-/* Ajuste de padding */
+
+/* Ajuste top padding */
 .block-container {padding-top: 1rem;}
+
+/* ---- BOTÓN FLOTANTE 🛒 SOLO MOBILE ---- */
+.carrito-fab {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    background-color: #f63366;
+    color: #fff;
+    padding: 14px 20px;
+    font-size: 18px;
+    font-weight: 700;
+    border-radius: 32px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.35);
+    z-index: 99999;
+    cursor: pointer;
+    transition: transform .15s ease-in-out;
+}
+.carrito-fab:hover {transform: scale(1.06);}
+@media (min-width: 769px) {.carrito-fab {display:none;}}  /* solo celular/tablet */
 </style>
 """, unsafe_allow_html=True)
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 st.title("🐾 Catálogo de productos Millex")
 
-# -----------------------------------------------------------------------------
-# 1. Descargar el Excel público desde Google Sheets y cachearlo
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 1. Bajar Excel desde Google Sheets (cacheado)
+# ------------------------------------------------------------------------------
 @st.cache_data(show_spinner=False)
 def fetch_excel(file_id: str) -> Path:
     url = f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=xlsx"
     r = requests.get(url, timeout=30)
     r.raise_for_status()
-    tmp_path = Path(tempfile.gettempdir()) / f"{file_id}.xlsx"
-    tmp_path.write_bytes(r.content)
-    return tmp_path
+    tmp = Path(tempfile.gettempdir()) / f"{file_id}.xlsx"
+    tmp.write_bytes(r.content)
+    return tmp
 
-# -----------------------------------------------------------------------------
-# 2. Cargar productos e imágenes
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 2. Cargar productos + imágenes
+# ------------------------------------------------------------------------------
 @st.cache_data(show_spinner=False)
 def load_products(xls_path: str) -> pd.DataFrame:
     wb = load_workbook(xls_path, data_only=True)
     ws = wb.active
-    img_map: dict[int, bytes] = {}
-    for img in ws._images:
-        row = img.anchor._from.row + 1
-        if hasattr(img, "_data"):
-            img_map[row] = img._data()
+    img_map = {img.anchor._from.row + 1: img._data()      # fila -> bytes
+               for img in ws._images if hasattr(img, "_data")}
     rows = []
     for idx, row in enumerate(ws.iter_rows(min_row=3, values_only=True), start=3):
         if not row[1]:
@@ -78,9 +90,9 @@ def load_products(xls_path: str) -> pd.DataFrame:
     df["img_bytes"] = df["fila_excel"].map(img_map)
     return df
 
-# -----------------------------------------------------------------------------
-# 3. Mapeo líneas → Sheets
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 3. Mapeo línea → Sheet ID
+# ------------------------------------------------------------------------------
 FILE_IDS = {
     "Línea Perros": "1EK_NlWT-eS5_7P2kWwBHsui2tKu5t26U",
     "Línea Pájaros y Roedores": "1n10EZZvZq-3M2t3rrtmvW7gfeB40VJ7F",
@@ -88,20 +100,22 @@ FILE_IDS = {
     "Línea Bombas de Acuario": "1DiXE5InuxMjZio6HD1nkwtQZe8vaGcSh",
 }
 
-# -----------------------------------------------------------------------------
-# 4. Selector de línea (en la parte principal, apto mobile)
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 4. Selector de línea (visible en todas las pantallas)
+# ------------------------------------------------------------------------------
 linea = st.selectbox("Elegí la línea de productos:", list(FILE_IDS.keys()))
 
-xls_path = fetch_excel(FILE_IDS[linea])
-df = load_products(str(xls_path))
+# ------------------------------------------------------------------------------
+# 5. Cargar catálogo seleccionado
+# ------------------------------------------------------------------------------
+df = load_products(str(fetch_excel(FILE_IDS[linea])))
 
-# Estado global del carrito
+# Carrito en sesión
 cart: dict = st.session_state.setdefault("cart", {})
 
-# -----------------------------------------------------------------------------
-# 5. Grid de productos (2 por fila)
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 6. Mostrar productos en grilla (2 por fila)
+# ------------------------------------------------------------------------------
 for i in range(0, len(df), 2):
     cols = st.columns(2)
     for j in range(2):
@@ -112,51 +126,47 @@ for i in range(0, len(df), 2):
             # Imagen
             if prod.img_bytes:
                 img = Image.open(io.BytesIO(prod.img_bytes))
-                thumb = img.resize((int(img.width * 0.3), int(img.height * 0.3)))
+                thumb = img.resize((int(img.width*0.3), int(img.height*0.3)))
                 st.image(thumb)
             else:
                 st.write("Sin imagen")
 
-            # Detalle
             st.markdown(f"**{prod.detalle}**")
             st.text(f"Código: {prod.codigo}")
             st.text(f"Precio: ${prod.precio:,.2f}")
 
-            # Cantidad
             qty_key = f"{linea}-{prod.codigo}"
             qty = st.number_input("Cantidad", min_value=0, step=1, key=qty_key)
 
-            # Actualizar carrito
             if qty:
                 cart[prod.codigo] = {"detalle": prod.detalle, "precio": prod.precio, "qty": qty}
             elif prod.codigo in cart:
                 cart.pop(prod.codigo)
 
-# -----------------------------------------------------------------------------
-# 6. Carrito en la barra lateral
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 7. Sidebar = Carrito
+# ------------------------------------------------------------------------------
 st.sidebar.header("🛒 Carrito")
 st.sidebar.markdown("---")
 
 if cart:
     tabla, total = [], 0.0
-    for codigo, item in cart.items():
-        subtotal = item["precio"] * item["qty"]
-        total += subtotal
-        tabla.append([codigo, item["qty"], f"${subtotal:,.2f}"])
+    for cod, it in cart.items():
+        sub = it["precio"] * it["qty"]
+        total += sub
+        tabla.append([cod, it["qty"], f"${sub:,.2f}"])
     st.sidebar.table(pd.DataFrame(tabla, columns=["Código", "Cant.", "Subtotal"]))
     st.sidebar.markdown(f"**Total: ${total:,.2f}**")
 
-    # WhatsApp
-    mensaje = "Hola! Quiero hacer un pedido de los siguientes productos:\n"
-    for codigo, item in cart.items():
-        mensaje += f"- {item['detalle']} (Código {codigo}) x {item['qty']}\n"
-    mensaje += f"\nTotal: ${total:,.2f}"
-    link = f"https://wa.me/5493516434765?text={urllib.parse.quote(mensaje)}"
+    msg = "Hola! Quiero hacer un pedido de los siguientes productos:\n"
+    for cod, it in cart.items():
+        msg += f"- {it['detalle']} (Código {cod}) x {it['qty']}\n"
+    msg += f"\nTotal: ${total:,.2f}"
+    link = f"https://wa.me/5493516434765?text={urllib.parse.quote(msg)}"
 
-    if st.sidebar.button("Confirmar pedido por WhatsApp"):
+    if st.sidebar.button("📲 Confirmar pedido por WhatsApp"):
         st.sidebar.success("¡Pedido listo para enviar por WhatsApp!")
-        st.sidebar.markdown(f"[📲 Enviar pedido →]({link})", unsafe_allow_html=True)
+        st.sidebar.markdown(f"[Enviar ahora →]({link})", unsafe_allow_html=True)
 
     if st.sidebar.button("🗑️ Vaciar carrito"):
         cart.clear()
@@ -166,6 +176,29 @@ if cart:
         st.experimental_rerun()
 else:
     st.sidebar.write("Todavía no agregaste productos.")
+
+# ------------------------------------------------------------------------------
+# 8. FAB móvil con contador de ítems
+# ------------------------------------------------------------------------------
+qty_total = sum(it["qty"] for it in cart.values())
+fab_label = f"🛒 ({qty_total})" if qty_total else "🛒 Ver carrito"
+
+st.markdown(
+    f'<div class="carrito-fab" onclick="window.dispatchEvent(new Event(\'toggleSidebar\'))">{fab_label}</div>',
+    unsafe_allow_html=True
+)
+
+# JS: clic → abre o cierra sidebar
+st.markdown("""
+<script>
+window.addEventListener("toggleSidebar", () => {
+  const btn = window.parent.document.querySelector('button[aria-label^="Toggle sidebar"]')
+           || window.parent.document.querySelector('button[title^="Expand sidebar"]')
+           || window.parent.document.querySelector('button[title^="Collapse sidebar"]');
+  if (btn) btn.click();
+});
+</script>
+""", unsafe_allow_html=True)
 
 
 
