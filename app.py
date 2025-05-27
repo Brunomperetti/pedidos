@@ -1,15 +1,4 @@
 # catalogo_millex_app.py
-import streamlit as st
-import pandas as pd
-from openpyxl import load_workbook
-from pathlib import Path
-from PIL import Image
-import io
-import urllib.parse
-import requests
-import tempfile
-
-# catalogo_millex_app.py
 
 import streamlit as st
 import pandas as pd
