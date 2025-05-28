@@ -8,6 +8,7 @@ import io
 import urllib.parse
 import requests
 import tempfile
+import math
 
 # ------------------------------------------------------------------------------
 # Configuración general
@@ -16,7 +17,7 @@ st.set_page_config(
     page_title="Catálogo Millex",
     page_icon="🐾",
     layout="wide",
-    initial_sidebar_state="collapsed",  # Arranca colapsada (el botón la abre)
+    initial_sidebar_state="collapsed",
     menu_items={"Get Help": None, "Report a bug": None, "About": None},
 )
 
@@ -49,9 +50,123 @@ div[class^="viewerBadge_container"],
     z-index: 99999;
     cursor: pointer;
     transition: transform .15s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 .carrito-fab:hover {transform: scale(1.06);}
 @media (min-width: 769px) {.carrito-fab {display:none;}}  /* solo celular/tablet */
+
+/* ---- ESTILOS PRODUCTOS ---- */
+.product-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 16px;
+    height: 100%;
+    transition: box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+.product-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.product-image {
+    width: 100%;
+    height: 180px;
+    object-fit: contain;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    background: #f9f9f9;
+}
+.product-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+    flex-grow: 1;
+}
+.product-code {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 4px;
+}
+.product-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: #f63366;
+    margin-bottom: 12px;
+}
+.product-qty {
+    margin-top: auto;
+}
+.stNumberInput > div {width: 100%;}
+.stNumberInput input {width: 100%;}
+
+/* ---- PAGINACIÓN ---- */
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+    gap: 8px;
+}
+.pagination button {
+    background: #f0f2f6;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.pagination button:hover {
+    background: #e0e2e6;
+}
+.pagination button.active {
+    background: #f63366;
+    color: white;
+}
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ---- SIDEBAR ---- */
+[data-testid="stSidebar"] {
+    background: #f8f9fa;
+    padding: 16px;
+}
+.sidebar-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.cart-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+.cart-item:last-child {
+    border-bottom: none;
+}
+.cart-total {
+    font-weight: 700;
+    font-size: 18px;
+    margin: 16px 0;
+    color: #f63366;
+}
+.whatsapp-btn {
+    background-color: #25D366 !important;
+    color: white !important;
+    width: 100%;
+    margin: 8px 0;
+}
+.clear-btn {
+    background-color: #f8f9fa !important;
+    color: #f63366 !important;
+    border: 1px solid #f63366 !important;
+    width: 100%;
+    margin: 8px 0;
+}
 </style>
 """, unsafe_allow_html=True)
 # ------------------------------------------------------------------------------
@@ -114,71 +229,114 @@ df = load_products(str(fetch_excel(FILE_IDS[linea])))
 cart: dict = st.session_state.setdefault("cart", {})
 
 # ------------------------------------------------------------------------------
-# 6. Mostrar productos en grilla (2 por fila)
+# 6. Configuración de paginación
 # ------------------------------------------------------------------------------
-for i in range(0, len(df), 2):
-    cols = st.columns(2)
-    for j in range(2):
-        if i + j >= len(df):
+ITEMS_PER_PAGE = 45
+total_pages = math.ceil(len(df) / ITEMS_PER_PAGE)
+current_page = st.session_state.get(f"current_page_{linea}", 1)
+
+# Función para cambiar de página
+def change_page(page_num):
+    st.session_state[f"current_page_{linea}"] = page_num
+
+# Controles de paginación
+if total_pages > 1:
+    col1, col2, col3 = st.columns([1, 6, 1])
+    with col1:
+        if current_page > 1:
+            st.button("◀ Anterior", on_click=change_page, args=(current_page-1,))
+    with col2:
+        st.write(f"Página {current_page} de {total_pages}")
+    with col3:
+        if current_page < total_pages:
+            st.button("Siguiente ▶", on_click=change_page, args=(current_page+1,))
+
+# ------------------------------------------------------------------------------
+# 7. Mostrar productos en grilla (3 por fila)
+# ------------------------------------------------------------------------------
+start_idx = (current_page - 1) * ITEMS_PER_PAGE
+end_idx = start_idx + ITEMS_PER_PAGE
+paginated_df = df.iloc[start_idx:end_idx]
+
+for i in range(0, len(paginated_df), 3):
+    cols = st.columns(3)
+    for j in range(3):
+        if i + j >= len(paginated_df):
             continue
-        prod = df.iloc[i + j]
+        prod = paginated_df.iloc[i + j]
         with cols[j]:
+            # Tarjeta de producto
+            st.markdown(f'<div class="product-card">', unsafe_allow_html=True)
+            
             # Imagen
             if prod.img_bytes:
                 img = Image.open(io.BytesIO(prod.img_bytes))
-                thumb = img.resize((int(img.width*0.3), int(img.height*0.3)))
-                st.image(thumb)
+                st.image(img, use_column_width=True, output_format="PNG", 
+                         caption="", clamp=True, channels="RGB", 
+                         width=200, output_format="auto")
             else:
-                st.write("Sin imagen")
-
-            st.markdown(f"**{prod.detalle}**")
-            st.text(f"Código: {prod.codigo}")
-            st.text(f"Precio: ${prod.precio:,.2f}")
-
+                st.image("https://via.placeholder.com/200x150?text=Sin+imagen", 
+                         use_column_width=True)
+            
+            # Detalles del producto
+            st.markdown(f'<div class="product-title">{prod.detalle}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="product-code">Código: {prod.codigo}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="product-price">${prod.precio:,.2f}</div>', unsafe_allow_html=True)
+            
+            # Selector de cantidad
             qty_key = f"{linea}-{prod.codigo}"
-            qty = st.number_input("Cantidad", min_value=0, step=1, key=qty_key)
-
+            qty = st.number_input("Cantidad", min_value=0, step=1, key=qty_key, 
+                                  value=cart.get(prod.codigo, {}).get("qty", 0))
+            
             if qty:
                 cart[prod.codigo] = {"detalle": prod.detalle, "precio": prod.precio, "qty": qty}
             elif prod.codigo in cart:
                 cart.pop(prod.codigo)
+            
+            st.markdown(f'</div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 7. Sidebar = Carrito
+# 8. Sidebar = Carrito
 # ------------------------------------------------------------------------------
-st.sidebar.header("🛒 Carrito")
-st.sidebar.markdown("---")
-
-if cart:
-    tabla, total = [], 0.0
-    for cod, it in cart.items():
-        sub = it["precio"] * it["qty"]
-        total += sub
-        tabla.append([cod, it["qty"], f"${sub:,.2f}"])
-    st.sidebar.table(pd.DataFrame(tabla, columns=["Código", "Cant.", "Subtotal"]))
-    st.sidebar.markdown(f"**Total: ${total:,.2f}**")
-
-    msg = "Hola! Quiero hacer un pedido de los siguientes productos:\n"
-    for cod, it in cart.items():
-        msg += f"- {it['detalle']} (Código {cod}) x {it['qty']}\n"
-    msg += f"\nTotal: ${total:,.2f}"
-    link = f"https://wa.me/5493516434765?text={urllib.parse.quote(msg)}"
-
-    if st.sidebar.button("📲 Confirmar pedido por WhatsApp"):
-        st.sidebar.success("¡Pedido listo para enviar por WhatsApp!")
-        st.sidebar.markdown(f"[Enviar ahora →]({link})", unsafe_allow_html=True)
-
-    if st.sidebar.button("🗑️ Vaciar carrito"):
-        cart.clear()
-        for k in list(st.session_state.keys()):
-            if "-" in k and isinstance(st.session_state[k], int):
-                st.session_state[k] = 0
-        st.experimental_rerun()
-else:
-    st.sidebar.write("Todavía no agregaste productos.")
+with st.sidebar:
+    st.markdown('<div class="sidebar-title"><h2>🛒 Carrito</h2></div>', unsafe_allow_html=True)
+    st.markdown("---")
+    
+    if cart:
+        for cod, it in cart.items():
+            st.markdown(f"""
+            <div class="cart-item">
+                <div><strong>{it['detalle']}</strong></div>
+                <div>Código: {cod}</div>
+                <div>Cantidad: {it['qty']}</div>
+                <div>Subtotal: ${it['precio'] * it['qty']:,.2f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        total = sum(it["precio"] * it["qty"] for it in cart.values())
+        st.markdown(f'<div class="cart-total">Total: ${total:,.2f}</div>', unsafe_allow_html=True)
+        
+        msg = "Hola! Quiero hacer un pedido de los siguientes productos:\n"
+        for cod, it in cart.items():
+            msg += f"- {it['detalle']} (Código {cod}) x {it['qty']}\n"
+        msg += f"\nTotal: ${total:,.2f}"
+        link = f"https://wa.me/5493516434765?text={urllib.parse.quote(msg)}"
+        
+        if st.button("📲 Confirmar pedido por WhatsApp", key="whatsapp_btn"):
+            st.success("¡Pedido listo para enviar por WhatsApp!")
+            st.markdown(f"[Enviar ahora →]({link})", unsafe_allow_html=True)
+        
+        if st.button("🗑️ Vaciar carrito", key="clear_btn"):
+            cart.clear()
+            for k in list(st.session_state.keys()):
+                if "-" in k and isinstance(st.session_state[k], int):
+                    st.session_state[k] = 0
+            st.experimental_rerun()
+    else:
+        st.write("Todavía no agregaste productos.")
 
 # ------------------------------------------------------------------------------
-# 8. FAB móvil con contador de ítems
+# 9. FAB móvil con contador de ítems
 # ------------------------------------------------------------------------------
 qty_total = sum(it["qty"] for it in cart.values())
 fab_label = f"🛒 ({qty_total})" if qty_total else "🛒 Ver carrito"
