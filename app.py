@@ -275,15 +275,7 @@ with st.sidebar:
     else:
         st.write("Todavía no agregaste productos.")
 
-# ------------------------------------------------------------------ #
-#  FAB móvil
-# ------------------------------------------------------------------ #
-qty_total = sum(it["qty"] for it in st.session_state["cart"].values())
-fab_label = f"🛒 ({qty_total})" if qty_total else "🛒 Ver carrito"
-st.markdown(
-    f'<div class="carrito-fab" onclick="window.dispatchEvent(new Event(\'toggleSidebar\'))">{fab_label}</div>',
-    unsafe_allow_html=True,
-)
+
 
 # ------------------------------------------------------------------ #
 #  JS global: alternar sidebar
