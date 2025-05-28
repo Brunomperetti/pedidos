@@ -33,6 +33,29 @@ div[class^="viewerBadge_container"],
 /* Ajuste top padding */
 .block-container {padding-top:1rem;}
 
+/* --- Nuevas reglas para móvil --- */
+@media(max-width:768px){
+  /* Paginación móvil - flechas juntas */
+  .pagination-mobile{display:flex;justify-content:center;gap:16px;margin:20px 0;}
+  .pagination-mobile button{background:#f0f2f6;border:none;border-radius:6px;
+    padding:8px 16px;cursor:pointer;transition:.3s;font-size:18px;}
+  .pagination-mobile button:hover{background:#e0e2e6;}
+  .pagination-mobile button:disabled{opacity:.5;cursor:not-allowed;}
+  
+  /* Ocultar paginación normal en móvil */
+  .pagination{display:none;}
+  
+  /* Mostrar paginación móvil */
+  .mobile-pager{display:block!important;}
+  
+  /* Reducir productos por página en móvil */
+  .mobile-items-per-page{display:block!important;}
+}
+
+/* Ocultar paginación móvil en desktop */
+.mobile-pager{display:none;}
+.mobile-items-per-page{display:none;}
+
 /* --- FAB carrito (solo mobile) --- */
 .carrito-fab{
   position:fixed;bottom:16px;right:16px;
@@ -161,7 +184,20 @@ else:
 # ------------------------------------------------------------------ #
 #  Paginación
 # ------------------------------------------------------------------ #
-ITEMS_PER_PAGE = 45
+# Detectar si es móvil
+st.markdown(
+    """
+<script>
+const isMobile = window.matchMedia('(max-width: 768px)').matches;
+window.parent.document.getElementById('is_mobile_detector').value = isMobile;
+</script>
+<input type="hidden" id="is_mobile_detector">
+""",
+    unsafe_allow_html=True,
+)
+
+# Items por página diferente en móvil
+ITEMS_PER_PAGE = 10 if st.session_state.get("is_mobile_detector", False) else 45
 total_pages = max(1, math.ceil(len(df) / ITEMS_PER_PAGE))
 page_key = f"current_page_{linea}"
 current_page = min(st.session_state.get(page_key, 1), total_pages)
@@ -170,17 +206,69 @@ def change_page(n: int):
     st.session_state[page_key] = n
 
 def pager(position: str):
+    # Versión móvil (flechas juntas)
+    st.markdown(
+        f"""
+<div class="mobile-pager">
+  <div class="pagination-mobile">
+    <button onclick="window.dispatchEvent(new Event('prev_page_{position}'))" 
+            {'disabled' if current_page == 1 else ''}>◀</button>
+    <span style="padding:8px 12px;font-weight:bold;">Pág. {current_page}/{total_pages}</span>
+    <button onclick="window.dispatchEvent(new Event('next_page_{position}'))" 
+            {'disabled' if current_page == total_pages else ''}>▶</button>
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+    
+    # Versión desktop (original)
     col1, col2, col3 = st.columns([1, 6, 1])
     with col1:
-        st.button("◀", on_click=change_page, args=(current_page - 1,), disabled=current_page == 1, key=f"{position}_prev")
+        st.button("◀", on_click=change_page, args=(current_page - 1,), 
+                disabled=current_page == 1, key=f"{position}_prev")
     with col2:
         st.write(f"Página {current_page} de {total_pages}")
     with col3:
-        st.button("▶",  # 👉 flecha DERECHA en ambas posiciones
-                  on_click=change_page,
-                  args=(current_page + 1,),
-                  disabled=current_page == total_pages,
-                  key=f"{position}_next")
+        st.button("▶", on_click=change_page, args=(current_page + 1,),
+                disabled=current_page == total_pages, key=f"{position}_next")
+
+# Manejar eventos de paginación móvil
+st.markdown(
+    """
+<script>
+// Manejar eventos de los botones móviles
+document.addEventListener('prev_page_top', () => {
+  const current = parseInt(window.parent.document.querySelector('[data-testid="stMarkdownContainer"]:has(> div > div > div > div > div > button[aria-label="◀"]) + div > div').textContent.split(' ')[1]);
+  if(current > 1) {
+    window.parent.document.querySelector('button[data-testid="baseButton-secondary"][aria-label="◀"]').click();
+  }
+});
+document.addEventListener('next_page_top', () => {
+  const current = parseInt(window.parent.document.querySelector('[data-testid="stMarkdownContainer"]:has(> div > div > div > div > div > button[aria-label="◀"]) + div > div').textContent.split(' ')[1]);
+  const total = parseInt(window.parent.document.querySelector('[data-testid="stMarkdownContainer"]:has(> div > div > div > div > div > button[aria-label="◀"]) + div > div').textContent.split(' ')[3]);
+  if(current < total) {
+    window.parent.document.querySelector('button[data-testid="baseButton-secondary"][aria-label="▶"]').click();
+  }
+});
+// Para el paginador inferior
+document.addEventListener('prev_page_bottom', () => {
+  const current = parseInt(window.parent.document.querySelectorAll('[data-testid="stMarkdownContainer"]:has(> div > div > div > div > div > button[aria-label="◀"]) + div > div')[1].textContent.split(' ')[1]);
+  if(current > 1) {
+    window.parent.document.querySelectorAll('button[data-testid="baseButton-secondary"][aria-label="◀"]')[1].click();
+  }
+});
+document.addEventListener('next_page_bottom', () => {
+  const current = parseInt(window.parent.document.querySelectorAll('[data-testid="stMarkdownContainer"]:has(> div > div > div > div > div > button[aria-label="◀"]) + div > div')[1].textContent.split(' ')[1]);
+  const total = parseInt(window.parent.document.querySelectorAll('[data-testid="stMarkdownContainer"]:has(> div > div > div > div > div > button[aria-label="◀"]) + div > div')[1].textContent.split(' ')[3]);
+  if(current < total) {
+    window.parent.document.querySelectorAll('button[data-testid="baseButton-secondary"][aria-label="▶"]')[1].click();
+  }
+});
+</script>
+""",
+    unsafe_allow_html=True,
+)
 
 if total_pages > 1:
     pager("top")
@@ -275,7 +363,15 @@ with st.sidebar:
     else:
         st.write("Todavía no agregaste productos.")
 
-
+# ------------------------------------------------------------------ #
+#  FAB móvil
+# ------------------------------------------------------------------ #
+qty_total = sum(it["qty"] for it in st.session_state["cart"].values())
+fab_label = f"🛒 ({qty_total})" if qty_total else "🛒 Ver carrito"
+st.markdown(
+    f'<div class="carrito-fab" onclick="window.dispatchEvent(new Event(\'toggleSidebar\'))">{fab_label}</div>',
+    unsafe_allow_html=True,
+)
 
 # ------------------------------------------------------------------ #
 #  JS global: alternar sidebar
@@ -293,8 +389,6 @@ window.addEventListener("toggleSidebar", () => {
 """,
     unsafe_allow_html=True,
 )
-
-
 
 
 
