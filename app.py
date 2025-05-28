@@ -34,8 +34,9 @@ div[class^="viewerBadge_container"],
 .block-container {padding-top:1rem;}
 
 /* --- FAB carrito (solo mobile) --- */
+/* Cambié bottom por top para que esté arriba */
 .carrito-fab{
-  position:fixed;bottom:16px;right:16px;
+  position:fixed;top:16px;right:16px;
   background:#f63366;color:#fff;
   padding:14px 20px;font-size:18px;font-weight:700;
   border-radius:32px;box-shadow:0 4px 12px rgba(0,0,0,.35);
@@ -176,131 +177,112 @@ def pager(position: str):
     with col2:
         st.write(f"Página {current_page} de {total_pages}")
     with col3:
-        st.button("▶",  # 👉 flecha DERECHA en ambas posiciones
-                  on_click=change_page,
-                  args=(current_page + 1,),
-                  disabled=current_page == total_pages,
-                  key=f"{position}_next")
+        st.button("▶",  on_click=change_page, args=(current_page + 1,), disabled=current_page == total_pages, key=f"{position}_next")
 
-if total_pages > 1:
-    pager("top")
+pager("top")
 
-# ------------------------------------------------------------------ #
-#  Mostrar productos (grilla 3xN)
-# ------------------------------------------------------------------ #
-start, end = (current_page - 1) * ITEMS_PER_PAGE, current_page * ITEMS_PER_PAGE
-paginated_df = df.iloc[start:end]
-
-for i in range(0, len(paginated_df), 3):
-    cols = st.columns(3)
-    for j in range(3):
-        if i + j >= len(paginated_df):
-            continue
-        prod = paginated_df.iloc[i + j]
-        with cols[j]:
-            st.markdown('<div class="product-card">', unsafe_allow_html=True)
-
-            # Imagen
-            if pd.notna(prod.img_bytes):
-                st.image(Image.open(io.BytesIO(prod.img_bytes)), use_container_width=True)
-            else:
-                st.image("https://via.placeholder.com/200x150?text=Sin+imagen", use_container_width=True)
-
-            # Texto
-            st.markdown(f'<div class="product-title">{prod.detalle}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="product-code">Código: {prod.codigo}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="product-price">${prod.precio:,.2f}</div>', unsafe_allow_html=True)
-
-            # Selector cantidad
-            qty_key = f"{linea}-{prod.codigo}"
-            qty = st.number_input("Cantidad", min_value=0, step=1,
-                                  key=qty_key,
-                                  value=st.session_state.get("cart", {}).get(prod.codigo, {}).get("qty", 0))
-
-            # Carrito en sesión
-            cart = st.session_state.setdefault("cart", {})
-            if qty:
-                cart[prod.codigo] = {"detalle": prod.detalle, "precio": prod.precio, "qty": qty}
-            elif prod.codigo in cart:
-                del cart[prod.codigo]
-
-            st.markdown("</div>", unsafe_allow_html=True)
-
-# Paginador inferior
-if total_pages > 1:
-    pager("bottom")
+start_idx = (current_page - 1) * ITEMS_PER_PAGE
+end_idx = start_idx + ITEMS_PER_PAGE
+page_df = df.iloc[start_idx:end_idx]
 
 # ------------------------------------------------------------------ #
-#  Sidebar ➜ Carrito
+#  Carrito: en session_state para persistencia
+# ------------------------------------------------------------------ #
+if "carrito" not in st.session_state:
+    st.session_state.carrito = {}
+
+def agregar_al_carrito(codigo, detalle, precio, cantidad):
+    if cantidad < 1:
+        return
+    if codigo in st.session_state.carrito:
+        st.session_state.carrito[codigo]["cantidad"] += cantidad
+    else:
+        st.session_state.carrito[codigo] = {"detalle": detalle, "precio": precio, "cantidad": cantidad}
+
+def quitar_del_carrito(codigo):
+    if codigo in st.session_state.carrito:
+        del st.session_state.carrito[codigo]
+
+# ------------------------------------------------------------------ #
+#  Renderizado productos
+# ------------------------------------------------------------------ #
+cols = st.columns(5)
+for i, (_, row) in enumerate(page_df.iterrows()):
+    with cols[i % 5]:
+        st.markdown(
+            f"""<div class="product-card" style="min-height:320px;">
+            <img class="product-image" src="data:image/png;base64,{row['img_bytes'].encode('base64').decode() if row['img_bytes'] else ''}" alt="Producto"/>
+            <div class="product-code">{row['codigo']}</div>
+            <div class="product-title">{row['detalle']}</div>
+            <div class="product-price">${row['precio']:.2f}</div>
+            </div>""",
+            unsafe_allow_html=True,
+        )
+        cantidad = st.number_input(
+            "Cantidad",
+            min_value=0,
+            max_value=99,
+            value=0,
+            key=f"qty_{row['codigo']}"
+        )
+        if st.button(f"Añadir al carrito", key=f"btn_{row['codigo']}"):
+            agregar_al_carrito(row['codigo'], row['detalle'], row['precio'], cantidad)
+            st.experimental_rerun()
+
+pager("bottom")
+
+# ------------------------------------------------------------------ #
+#  Sidebar: carrito y acciones
 # ------------------------------------------------------------------ #
 with st.sidebar:
-    # Botón cerrar
-    st.markdown('<div class="close-sidebar" onclick="window.dispatchEvent(new Event(\'toggleSidebar\'))">✖</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="sidebar-title"><h2>🛒 Carrito</h2></div>', unsafe_allow_html=True)
-    st.markdown("---")
-
-    cart = st.session_state["cart"]
-    if cart:
-        for cod, it in cart.items():
+    st.markdown(
+        """
+        <div class="sidebar-title">
+            <h3>🛒 Tu carrito</h3>
+            <span class="close-sidebar" onclick="document.querySelector('section[data-testid=stSidebar]').style.display='none'">&times;</span>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+    total = 0
+    if not st.session_state.carrito:
+        st.info("Tu carrito está vacío")
+    else:
+        for c, item in st.session_state.carrito.items():
             st.markdown(
-                f"""
-<div class="cart-item">
-  <div><strong>{it['detalle']}</strong></div>
-  <div>Código: {cod}</div>
-  <div>Cantidad: {it['qty']}</div>
-  <div>Subtotal: ${it['precio'] * it['qty']:,.2f}</div>
-</div>
-""",
+                f"""<div class="cart-item">
+                    <b>{c}</b>: {item['detalle']}<br/>
+                    Cantidad: {item['cantidad']} | Precio unitario: ${item['precio']:.2f}<br/>
+                    Subtotal: ${item['precio']*item['cantidad']:.2f}
+                </div>""",
                 unsafe_allow_html=True,
             )
-
-        total = sum(it["precio"] * it["qty"] for it in cart.values())
-        st.markdown(f'<div class="cart-total">Total: ${total:,.2f}</div>', unsafe_allow_html=True)
-
-        # Enlace WhatsApp
-        msg_lines = [f"- {it['detalle']} (Código {cod}) x {it['qty']}" for cod, it in cart.items()]
-        msg = "Hola! Quiero hacer un pedido de los siguientes productos:\n" + "\n".join(msg_lines) + f"\n\nTotal: ${total:,.2f}"
-        link = f"https://wa.me/5493516434765?text={urllib.parse.quote(msg)}"
-
-        st.link_button("📲 Confirmar pedido por WhatsApp", link, icon="💬")
-
-        if st.button("🗑️ Vaciar carrito", key="clear_btn"):
-            cart.clear()
-            # Reiniciar todos los number_input
-            for k in list(st.session_state.keys()):
-                if k.startswith(f"{linea}-"):
-                    st.session_state[k] = 0
+            total += item['precio'] * item['cantidad']
+        st.markdown(f'<div class="cart-total">Total: ${total:.2f}</div>', unsafe_allow_html=True)
+        if st.button("Vaciar carrito", key="vaciar"):
+            st.session_state.carrito = {}
             st.experimental_rerun()
-    else:
-        st.write("Todavía no agregaste productos.")
+        if st.button("WhatsApp - Enviar pedido", key="whatsapp"):
+            # Construir mensaje de pedido
+            texto = "Hola! Quiero hacer el siguiente pedido:\n"
+            for c, item in st.session_state.carrito.items():
+                texto += f"- {item['cantidad']} x {c} - {item['detalle']}\n"
+            texto += f"Total: ${total:.2f}"
+            url = "https://wa.me/5491165439637?text=" + urllib.parse.quote(texto)
+            st.markdown(f"[Abrir WhatsApp]({url})", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------ #
-#  FAB móvil
+#  Botón flotante carrito (móvil)
 # ------------------------------------------------------------------ #
-qty_total = sum(it["qty"] for it in st.session_state["cart"].values())
-fab_label = f"🛒 ({qty_total})" if qty_total else "🛒 Ver carrito"
-st.markdown(
-    f'<div class="carrito-fab" onclick="window.dispatchEvent(new Event(\'toggleSidebar\'))">{fab_label}</div>',
-    unsafe_allow_html=True,
-)
+if st.runtime.exists() and st.runtime.is_mobile:
+    st.markdown(
+        """
+        <div class="carrito-fab" onclick="window.parent.document.querySelector('section[data-testid=stSidebar]').style.display='block'">
+            🛒 Ver carrito
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-# ------------------------------------------------------------------ #
-#  JS global: alternar sidebar
-# ------------------------------------------------------------------ #
-st.markdown(
-    """
-<script>
-window.addEventListener("toggleSidebar", () => {
-  const btn = window.parent.document.querySelector('button[aria-label^="Toggle sidebar"]') ||
-              window.parent.document.querySelector('button[title^="Expand sidebar"]') ||
-              window.parent.document.querySelector('button[title^="Collapse sidebar"]');
-  if (btn) btn.click();
-});
-</script>
-""",
-    unsafe_allow_html=True,
-)
 
 
 
