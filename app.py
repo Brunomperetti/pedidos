@@ -271,9 +271,7 @@ for i in range(0, len(paginated_df), 3):
             # Imagen
             if prod.img_bytes:
                 img = Image.open(io.BytesIO(prod.img_bytes))
-                st.image(img, use_column_width=True, output_format="PNG", 
-                         caption="", clamp=True, channels="RGB", 
-                         width=200, output_format="auto")
+                st.image(img, use_column_width=True)
             else:
                 st.image("https://via.placeholder.com/200x150?text=Sin+imagen", 
                          use_column_width=True)
