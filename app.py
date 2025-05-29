@@ -161,9 +161,15 @@ FILE_IDS = {
 # ------------------------------------------------------------------ #
 #  UI: selector de línea + buscador
 # ------------------------------------------------------------------ #
-col_linea, col_search = st.columns([1, 2])
+col_carrito, col_linea, col_search = st.columns([1, 1.5, 2.5])
+
+with col_carrito:
+    if st.button("🛒 Ver carrito"):
+        st.sidebar.toggle()  # Si querés abrir/cerrar el sidebar como carrito
+
 with col_linea:
     linea = st.selectbox("Elegí la línea de productos:", list(FILE_IDS.keys()))
+
 with col_search:
     search_term = st.text_input("🔍 Buscar (código o descripción)…").strip().lower()
 search_norm = quitar_acentos(search_term)
