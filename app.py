@@ -31,6 +31,7 @@ def load_products_from_sheet(xls_path: str, sheet_name: str) -> pd.DataFrame:
     
     # Leer todas las filas a partir de la fila 3 (suponiendo que las primeras filas son encabezados)
     rows = []
+    incorrect_rows = []  # Para almacenar filas incorrectas
     for idx, row in enumerate(ws.iter_rows(min_row=3, values_only=True), start=3):
         if not row[0]:  # Si no hay SKU, se detiene
             break
@@ -38,7 +39,14 @@ def load_products_from_sheet(xls_path: str, sheet_name: str) -> pd.DataFrame:
         if len(row) == 9:  # Verificar que la fila tenga exactamente 9 columnas
             rows.append(row)
         else:
+            incorrect_rows.append((idx, row))  # Guardar la fila incorrecta para depuración
             st.warning(f"Fila {idx} tiene un número incorrecto de columnas y será ignorada.")
+    
+    # Mostrar filas incorrectas para depuración
+    if incorrect_rows:
+        st.write("Filas con un número incorrecto de columnas:")
+        for idx, row in incorrect_rows:
+            st.write(f"Fila {idx}: {row}")
     
     # Crear DataFrame con las columnas especificadas
     df = pd.DataFrame(rows, columns=[
