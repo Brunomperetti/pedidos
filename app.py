@@ -161,7 +161,7 @@ for _, row in df_page.iterrows():
     # Mostrar imagen (si existe en el diccionario de imágenes)
     if row['SKU'] in images:
         img_bytes = images[row['SKU']]
-        st.image(img_bytes, caption=row['Descripcion'], use_container_width=True, width=200)  # Ajusta el tamaño de la imagen aquí
+        st.image(img_bytes, caption=row['Descripcion'], width=150)  # Ajustar tamaño de imagen a 150px de ancho
     
     # Campo para ingresar cantidad de cajas
     cantidad = st.number_input(f"Cantidad de {row['SKU']}", min_value=1, max_value=100, value=1, step=1, key=row['SKU'])
