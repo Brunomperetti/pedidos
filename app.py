@@ -134,6 +134,7 @@ def generate_pdf(cart_items):
     c.drawString(30, 735, f"Fecha: {pd.Timestamp.now().strftime('%d/%m/%Y')}")
     
     y_position = 710
+    line_height = 15  # Espacio entre las líneas de texto
     for item in cart_items:
         c.drawString(30, y_position, f"SKU: {item['SKU']}")
         c.drawString(100, y_position, f"Nombre: {item['Nombre']}")
@@ -141,7 +142,7 @@ def generate_pdf(cart_items):
         c.drawString(400, y_position, f"Cantidad: {item['Cantidad']}")
         total_price = item["Precio"] * item["Cantidad"]
         c.drawString(500, y_position, f"Total: ${total_price:,.2f}")
-        y_position -= 20
+        y_position -= line_height
         
         if y_position < 100:
             c.showPage()  # Si estamos cerca del final de la página, agregamos una nueva
