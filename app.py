@@ -34,7 +34,11 @@ def load_products_from_sheet(xls_path: str, sheet_name: str) -> pd.DataFrame:
     for idx, row in enumerate(ws.iter_rows(min_row=3, values_only=True), start=3):
         if not row[0]:  # Si no hay SKU, se detiene
             break
-        rows.append(row)
+        # Asegurarnos de que cada fila tenga el mismo número de columnas que las definidas
+        if len(row) == 9:  # Verificar que la fila tenga exactamente 9 columnas
+            rows.append(row)
+        else:
+            st.warning(f"Fila {idx} tiene un número incorrecto de columnas y será ignorada.")
     
     # Crear DataFrame con las columnas especificadas
     df = pd.DataFrame(rows, columns=[
@@ -138,6 +142,7 @@ for _, row in df_page.iterrows():
     st.write(f"**Unidades totales:** {row['Unidades totales']}")
     st.write(f"**Precio final USD:** ${row['Precio final USD']:,.2f}")
     st.markdown("---")
+
 
 
 
