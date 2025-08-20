@@ -139,9 +139,6 @@ def generate_pdf(cart_items):
         c.drawString(30, y_position, f"SKU: {item['SKU']}")
         c.drawString(100, y_position, f"Nombre: {item['Nombre']}")
         c.drawString(300, y_position, f"Precio: ${item['Precio']}")
-        c.drawString(400, y_position, f"Cantidad: {item['Cantidad']}")
-        total_price = item["Precio"] * item["Cantidad"]
-        c.drawString(500, y_position, f"Total: ${total_price:,.2f}")
         y_position -= line_height
         
         if y_position < 100:
@@ -224,6 +221,5 @@ if st.button("Descargar PDF del Pedido"):
         file_name="pedido_catálogo_millex.pdf",
         mime="application/pdf"
     )
-
 
 
