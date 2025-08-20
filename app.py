@@ -91,6 +91,26 @@ if search_term:
 else:
     df = df_base.copy()
 
+# --- Carrito de compras --- 
+
+if "cart" not in st.session_state:
+    st.session_state["cart"] = []
+
+# Función para agregar al carrito
+def add_to_cart(sku, nombre, precio, cantidad=1):
+    st.session_state["cart"].append({"SKU": sku, "Nombre": nombre, "Precio": precio, "Cantidad": cantidad})
+
+# Mostrar carrito y total
+def show_cart():
+    if st.session_state["cart"]:
+        st.write("### Carrito de compras")
+        cart_df = pd.DataFrame(st.session_state["cart"])
+        st.write(cart_df)
+        total = sum(item["Precio"] * item["Cantidad"] for item in st.session_state["cart"])
+        st.write(f"**Total: ${total:,.2f}**")
+    else:
+        st.write("### El carrito está vacío.")
+
 # --- Paginación simple ---
 
 ITEMS_PER_PAGE = 20
@@ -120,7 +140,7 @@ start_idx = (st.session_state[page_key] - 1) * ITEMS_PER_PAGE
 end_idx = start_idx + ITEMS_PER_PAGE
 df_page = df.iloc[start_idx:end_idx]
 
-# --- Mostrar productos ---
+# --- Mostrar productos con imagen y carrito ---
 
 for _, row in df_page.iterrows():
     st.write(f"**SKU:** {row['SKU']}")
@@ -128,7 +148,19 @@ for _, row in df_page.iterrows():
     st.write(f"**Tamaño del producto:** {row['Tamaño del producto']}")
     st.write(f"**Precio USD:** ${row['Precio USD']:,.2f}")
     st.write(f"**Unidades por caja:** {row['Unidades por caja']}")
+    
+    # Mostrar imagen
+    if row['Imagen']:
+        st.image(row['Imagen'], caption=row['Descripcion'], use_column_width=True)
+    
+    # Botón para agregar al carrito
+    if st.button(f"Agregar {row['SKU']} al carrito", key=row['SKU']):
+        add_to_cart(row['SKU'], row['Descripcion'], row['Precio USD'])
+    
     st.markdown("---")
+
+# Mostrar el carrito
+show_cart()
 
 
 
