@@ -196,7 +196,6 @@ for _, row in df_page.iterrows():
     st.write(f"**Precio USD:** ${row['Precio USD']:,.2f}")
     st.write(f"**Unidades por caja:** {row['Unidades por caja']}")
     
-    # Mostrar imagen
     if row['SKU'] in images:
         st.image(images[row['SKU']], width=100)  # Ajustar el tamaño de la imagen
     
