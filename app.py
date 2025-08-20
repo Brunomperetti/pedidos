@@ -9,7 +9,6 @@ import math
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from io import BytesIO
 
 # --- Funciones base de tu código ---
 
@@ -138,7 +137,7 @@ def generate_pdf(cart_items):
     for item in cart_items:
         c.drawString(30, y_position, f"SKU: {item['SKU']}")
         c.drawString(100, y_position, f"Nombre: {item['Nombre']}")
-        c.drawString(300, y_position, f"Precio: ${item['Precio']}")
+        c.drawString(300, y_position, f"Precio: ${item['Precio']:.2f}")
         y_position -= line_height
         
         if y_position < 100:
@@ -188,9 +187,9 @@ for _, row in df_page.iterrows():
     st.write(f"**SKU:** {row['SKU']}")
     st.write(f"**Descripción:** {row['Descripcion']}")
     st.write(f"**Tamaño del producto:** {row['Tamaño del producto']}")
-    st.write(f"**Precio unitario (USD):** ${row['Precio USD']:,.2f}")
+    st.write(f"**Precio USD:** ${row['Precio USD']:,.2f}")
     st.write(f"**Unidades por caja:** {row['Unidades por caja']}")
-    
+
     # Mostrar imagen (si existe en el diccionario de imágenes)
     if row['SKU'] in images:
         img_bytes = images[row['SKU']]
