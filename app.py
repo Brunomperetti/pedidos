@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
 from openpyxl import load_workbook
-from openpyxl.drawing.image import Image
 from pathlib import Path
 import unicodedata
 import requests
 import tempfile
 import math
 from io import BytesIO
+from PIL import Image as PILImage  # Importamos PIL para manejar imágenes
 
 # --- Funciones base de tu código ---
 
@@ -162,8 +162,10 @@ for _, row in df_page.iterrows():
     # Mostrar imagen (si existe en el diccionario de imágenes)
     if row['SKU'] in images:
         img_bytes = images[row['SKU']]
-        # Ajustar el tamaño de la imagen: limitando el tamaño de la imagen (200px de ancho)
-        st.image(img_bytes, caption=row['Descripcion'], use_container_width=True, width=200)
+        # Redimensionar la imagen antes de mostrarla
+        image = PILImage.open(BytesIO(img_bytes))  # Cargar la imagen desde los bytes
+        image = image.resize((300, 300))  # Redimensionar la imagen a un tamaño específico (300x300)
+        st.image(image, caption=row['Descripcion'], use_container_width=True)
     
     # Campo para ingresar cantidad de cajas
     cantidad = st.number_input(f"Cantidad de {row['SKU']}", min_value=1, max_value=100, value=1, step=1, key=row['SKU'])
