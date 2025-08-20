@@ -90,18 +90,6 @@ df_base, images = load_products_from_sheet(str(xls_path), sheet_name)
 if df_base.empty:
     st.stop()  # Detener la ejecución si no se encuentran datos válidos
 
-# Búsqueda en productos
-search_term = st.text_input("🔍 Buscar (SKU o descripción)…").strip().lower()
-search_norm = quitar_acentos(search_term)
-
-if search_term:
-    df = df_base[
-        df_base["descripcion_norm"].str.contains(search_norm, na=False)
-        | df_base["SKU"].str.contains(search_norm, na=False)
-    ]
-else:
-    df = df_base.copy()
-
 # --- Carrito de compras --- 
 
 if "cart" not in st.session_state:
@@ -161,7 +149,7 @@ def generate_pdf(cart_items):
 # --- Paginación simple ---
 
 ITEMS_PER_PAGE = 20
-total_pages = max(1, math.ceil(len(df) / ITEMS_PER_PAGE))
+total_pages = max(1, math.ceil(len(df_base) / ITEMS_PER_PAGE))
 page_key = f"page_{sheet_name}"
 if page_key not in st.session_state:
     st.session_state[page_key] = 1
@@ -185,7 +173,7 @@ with col3:
 
 start_idx = (st.session_state[page_key] - 1) * ITEMS_PER_PAGE
 end_idx = start_idx + ITEMS_PER_PAGE
-df_page = df.iloc[start_idx:end_idx]
+df_page = df_base.iloc[start_idx:end_idx]
 
 # --- Mostrar productos con imagen y carrito ---
 
