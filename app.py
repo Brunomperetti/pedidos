@@ -28,17 +28,38 @@ def fetch_excel_from_drive(file_id: str) -> Path:
 def load_products_from_sheet(xls_path: str, sheet_name: str) -> pd.DataFrame:
     wb = load_workbook(xls_path, data_only=True)
     ws = wb[sheet_name]  # Cargar la hoja específica
+    
+    # Leer todas las filas a partir de la fila 3 (suponiendo que las primeras filas son encabezados)
     rows = []
     for idx, row in enumerate(ws.iter_rows(min_row=3, values_only=True), start=3):
-        if not row[1]:
+        if not row[0]:  # Si no hay SKU, se detiene
             break
-        codigo, detalle, precio = row[1], row[2], row[3]
-        precio = 0 if precio is None else float(str(precio).replace("$", "").replace(",", ""))
-        rows.append({"fila_excel": idx, "codigo": str(codigo), "detalle": str(detalle), "precio": precio})
-    df = pd.DataFrame(rows)
-    # Columnas normalizadas para búsqueda
-    df["codigo_norm"]  = df["codigo"].apply(quitar_acentos)
-    df["detalle_norm"] = df["detalle"].apply(quitar_acentos)
+        rows.append(row)
+    
+    # Crear DataFrame con las columnas especificadas
+    df = pd.DataFrame(rows, columns=[
+        "SKU", "Imagen", "Descripcion", "Tamaño del producto", 
+        "Precio USD", "Unidades por caja", "Orden de cant. De cajas", 
+        "Unidades totales", "Precio final USD"
+    ])
+    
+    # Mostrar las primeras filas para depuración (puedes eliminar esta línea después de revisar)
+    st.write("Primeras filas del DataFrame:", df.head())
+    
+    # Verificar si las columnas necesarias están presentes
+    required_columns = ["SKU", "Descripcion", "Precio USD"]
+    for col in required_columns:
+        if col not in df.columns:
+            st.error(f"La columna '{col}' no se encontró en la hoja seleccionada.")
+            return pd.DataFrame()  # Retornar un DataFrame vacío en caso de error
+    
+    # Normalizar los datos
+    df["descripcion_norm"] = df["Descripcion"].apply(quitar_acentos)
+    
+    # Limpiar precios
+    df["Precio USD"] = df["Precio USD"].apply(lambda x: float(str(x).replace("$", "").replace(",", "")) if isinstance(x, str) else x)
+    df["Precio final USD"] = df["Precio final USD"].apply(lambda x: float(str(x).replace("$", "").replace(",", "")) if isinstance(x, str) else x)
+    
     return df
 
 # --- Variables principales ---
@@ -61,14 +82,17 @@ sheet_name = st.selectbox("Selecciona la línea de productos:", sheet_names)
 # Cargar los productos desde la hoja seleccionada
 df_base = load_products_from_sheet(str(xls_path), sheet_name)
 
+if df_base.empty:
+    st.stop()  # Detener la ejecución si no se encuentran datos válidos
+
 # Búsqueda en productos
-search_term = st.text_input("🔍 Buscar (código o descripción)…").strip().lower()
+search_term = st.text_input("🔍 Buscar (SKU o descripción)…").strip().lower()
 search_norm = quitar_acentos(search_term)
 
 if search_term:
     df = df_base[
-        df_base["codigo_norm"].str.contains(search_norm, na=False)
-        | df_base["detalle_norm"].str.contains(search_norm, na=False)
+        df_base["descripcion_norm"].str.contains(search_norm, na=False)
+        | df_base["SKU"].str.contains(search_norm, na=False)
     ]
 else:
     df = df_base.copy()
@@ -105,9 +129,14 @@ df_page = df.iloc[start_idx:end_idx]
 # --- Mostrar productos ---
 
 for _, row in df_page.iterrows():
-    st.write(f"**Código:** {row['codigo']}")
-    st.write(f"**Detalle:** {row['detalle']}")
-    st.write(f"**Precio:** ${row['precio']:,.2f}")
+    st.write(f"**SKU:** {row['SKU']}")
+    st.write(f"**Descripción:** {row['Descripcion']}")
+    st.write(f"**Tamaño del producto:** {row['Tamaño del producto']}")
+    st.write(f"**Precio USD:** ${row['Precio USD']:,.2f}")
+    st.write(f"**Unidades por caja:** {row['Unidades por caja']}")
+    st.write(f"**Orden de cant. De cajas:** {row['Orden de cant. De cajas']}")
+    st.write(f"**Unidades totales:** {row['Unidades totales']}")
+    st.write(f"**Precio final USD:** ${row['Precio final USD']:,.2f}")
     st.markdown("---")
 
 
