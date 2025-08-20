@@ -200,11 +200,13 @@ for _, row in df_page.iterrows():
         st.image(images[row['SKU']], width=100)  # Ajustar el tamaño de la imagen
     
     cantidad = st.number_input(f"Cantidad para {row['SKU']}", min_value=1, step=1, key=f"qty_{row['SKU']}")
+    total_price = row["Precio USD"] * row["Unidades por caja"] * cantidad
+    
+    st.write(f"**Total para {row['SKU']}:** ${total_price:,.2f}")  # Mostrar precio total en tiempo real
     
     # Botón para agregar al carrito
     if st.button(f"Agregar {row['SKU']} al carrito", key=f"add_{row['SKU']}"):
-        total_price = row["Precio USD"] * row["Unidades por caja"]
-        add_to_cart(row["SKU"], row["Descripcion"], total_price, cantidad)
+        add_to_cart(row["SKU"], row["Descripcion"], row["Precio USD"] * row["Unidades por caja"], cantidad)
 
     st.markdown("---")
 
