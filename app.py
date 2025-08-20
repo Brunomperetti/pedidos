@@ -140,10 +140,10 @@ def generate_pdf(cart_items):
     line_height = 15  # Espacio entre las líneas de texto
     for item in cart_items:
         c.drawString(30, y_position, f"SKU: {item['SKU']}")
-        c.drawString(100, y_position, f"Nombre: {item['Nombre']}")
-        c.drawString(300, y_position, f"Precio unitario: ${item['Precio']:.2f}")
-        c.drawString(450, y_position, f"Cantidad: {item['Cantidad']}")
-        c.drawString(550, y_position, f"Precio total: ${item['Precio'] * item['Cantidad']:.2f}")
+        c.drawString(100, y_position, f"{item['Nombre']}")
+        c.drawString(300, y_position, f"${item['Precio']:.2f}")
+        c.drawString(400, y_position, f"x {item['Cantidad']}")
+        c.drawString(500, y_position, f"${item['Precio'] * item['Cantidad']:.2f}")
         y_position -= line_height
         
         if y_position < 100:
@@ -193,7 +193,7 @@ for _, row in df_page.iterrows():
     st.write(f"**SKU:** {row['SKU']}")
     st.write(f"**Descripción:** {row['Descripcion']}")
     st.write(f"**Tamaño del producto:** {row['Tamaño del producto']}")
-    st.write(f"**Precio USD:** ${row['Precio USD']:,.2f}")
+    st.write(f"**Precio por caja:** ${row['Precio USD']:,.2f}")
     st.write(f"**Unidades por caja:** {row['Unidades por caja']}")
     
     if row['SKU'] in images:
