@@ -16,8 +16,8 @@ def quitar_acentos(texto: str) -> str:
     ).lower()
 
 @st.cache_data(show_spinner=False)
-def fetch_excel(file_id: str) -> Path:
-    url = f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=xlsx"
+def fetch_excel_from_drive(file_id: str) -> Path:
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
     r = requests.get(url, timeout=30)
     r.raise_for_status()
     tmp = Path(tempfile.gettempdir()) / f"{file_id}.xlsx"
@@ -25,7 +25,7 @@ def fetch_excel(file_id: str) -> Path:
     return tmp
 
 @st.cache_data(show_spinner=False)
-def load_products(xls_path: str, sheet_name: str) -> pd.DataFrame:
+def load_products_from_sheet(xls_path: str, sheet_name: str) -> pd.DataFrame:
     wb = load_workbook(xls_path, data_only=True)
     ws = wb[sheet_name]  # Cargar la hoja específica
     rows = []
@@ -43,20 +43,27 @@ def load_products(xls_path: str, sheet_name: str) -> pd.DataFrame:
 
 # --- Variables principales ---
 
-FILE_IDS = {
-    "Catálogo Productos": "1JG-_vjmFXnWM13Xp6PCOzjgJkxks8BEF",  # ID actualizado
-}
-
 st.set_page_config(page_title="Catálogo Millex", layout="wide")
 
-linea = st.selectbox("Elegí la línea de productos:", ["Perros", "Gatos"])
+# ID del archivo de Google Sheets
+FILE_ID = "1JG-_vjmFXnWM13Xp6PCOzjgJkxks8BEF"  # Reemplazar con el ID de tu archivo
+
+# Cargar el archivo Excel desde Google Drive
+xls_path = fetch_excel_from_drive(FILE_ID)
+
+# Cargar las hojas disponibles en el archivo Excel
+wb = load_workbook(xls_path, data_only=True)
+sheet_names = wb.sheetnames  # Obtener los nombres de las hojas
+
+# Selección de la hoja a cargar (Perros, Gatos, etc.)
+sheet_name = st.selectbox("Selecciona la línea de productos:", sheet_names)
+
+# Cargar los productos desde la hoja seleccionada
+df_base = load_products_from_sheet(str(xls_path), sheet_name)
+
+# Búsqueda en productos
 search_term = st.text_input("🔍 Buscar (código o descripción)…").strip().lower()
 search_norm = quitar_acentos(search_term)
-
-# Determinar el nombre de la hoja a cargar
-sheet_name = "Perros" if linea == "Perros" else "Gatos"
-
-df_base = load_products(str(fetch_excel(FILE_IDS["Catálogo Productos"])), sheet_name)
 
 if search_term:
     df = df_base[
@@ -70,7 +77,7 @@ else:
 
 ITEMS_PER_PAGE = 20
 total_pages = max(1, math.ceil(len(df) / ITEMS_PER_PAGE))
-page_key = f"page_{linea}"
+page_key = f"page_{sheet_name}"
 if page_key not in st.session_state:
     st.session_state[page_key] = 1
 
@@ -102,7 +109,6 @@ for _, row in df_page.iterrows():
     st.write(f"**Detalle:** {row['detalle']}")
     st.write(f"**Precio:** ${row['precio']:,.2f}")
     st.markdown("---")
-
 
 
 
