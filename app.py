@@ -7,7 +7,6 @@ import requests
 import tempfile
 import math
 from io import BytesIO
-from PIL import Image as PILImage  # Importamos PIL para manejar imágenes
 
 # --- Funciones base de tu código ---
 
@@ -162,14 +161,7 @@ for _, row in df_page.iterrows():
     # Mostrar imagen (si existe en el diccionario de imágenes)
     if row['SKU'] in images:
         img_bytes = images[row['SKU']]
-        image = PILImage.open(BytesIO(img_bytes))  # Cargar la imagen desde los bytes
-        
-        # Mantener la relación de aspecto sin distorsionar, y redimensionar la imagen
-        max_width = 300
-        max_height = 300
-        image.thumbnail((max_width, max_height))  # Redimensionar manteniendo la relación de aspecto
-        
-        st.image(image, caption=row['Descripcion'], use_container_width=True)
+        st.image(img_bytes, caption=row['Descripcion'], use_container_width=True, width=200)  # Ajusta el tamaño de la imagen aquí
     
     # Campo para ingresar cantidad de cajas
     cantidad = st.number_input(f"Cantidad de {row['SKU']}", min_value=1, max_value=100, value=1, step=1, key=row['SKU'])
