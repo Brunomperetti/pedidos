@@ -149,19 +149,21 @@ for _, row in df_page.iterrows():
     st.write(f"**Precio USD:** ${row['Precio USD']:,.2f}")
     st.write(f"**Unidades por caja:** {row['Unidades por caja']}")
     
-    # Mostrar imagen
+    # Mostrar imagen (si existe)
     if row['Imagen']:
         st.image(row['Imagen'], caption=row['Descripcion'], use_column_width=True)
     
+    # Campo para ingresar cantidad de cajas
+    cantidad = st.number_input(f"Cantidad de {row['SKU']}", min_value=1, max_value=100, value=1, step=1, key=row['SKU'])
+    
     # Botón para agregar al carrito
-    if st.button(f"Agregar {row['SKU']} al carrito", key=row['SKU']):
-        add_to_cart(row['SKU'], row['Descripcion'], row['Precio USD'])
+    if st.button(f"Agregar {row['SKU']} al carrito", key=f"add_{row['SKU']}"):
+        add_to_cart(row['SKU'], row['Descripcion'], row['Precio USD'], cantidad)
     
     st.markdown("---")
 
 # Mostrar el carrito
 show_cart()
-
 
 
 
