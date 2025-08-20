@@ -29,48 +29,30 @@ def load_products_from_sheet(xls_path: str, sheet_name: str) -> pd.DataFrame:
     wb = load_workbook(xls_path, data_only=True)
     ws = wb[sheet_name]  # Cargar la hoja específica
     
-    # Leer todas las filas a partir de la fila 3 (suponiendo que las primeras filas son encabezados)
+    # Leer las filas a partir de la fila 3 (suponiendo que las primeras filas son encabezados)
     rows = []
-    incorrect_rows = []  # Para almacenar filas incorrectas
     for idx, row in enumerate(ws.iter_rows(min_row=3, values_only=True), start=3):
         if not row[0]:  # Si no hay SKU, se detiene
             break
-        # Asegurarnos de que cada fila tenga el mismo número de columnas que las definidas
-        if len(row) == 9:  # Verificar que la fila tenga exactamente 9 columnas
-            rows.append(row)
-        else:
-            incorrect_rows.append((idx, row))  # Guardar la fila incorrecta para depuración
-            st.warning(f"Fila {idx} tiene un número incorrecto de columnas y será ignorada.")
-    
-    # Mostrar filas incorrectas para depuración
-    if incorrect_rows:
-        st.write("Filas con un número incorrecto de columnas:")
-        for idx, row in incorrect_rows:
-            st.write(f"Fila {idx}: {row}")
+        # Extraer solo las columnas necesarias (SKU, Imagen, Descripción, etc.)
+        sku, imagen, descripcion, tamaño, precio_usd, unidades_por_caja, *resto = row[:7]
+        
+        # Filtramos solo las columnas necesarias
+        rows.append([sku, imagen, descripcion, tamaño, precio_usd, unidades_por_caja])
     
     # Crear DataFrame con las columnas especificadas
     df = pd.DataFrame(rows, columns=[
-        "SKU", "Imagen", "Descripcion", "Tamaño del producto", 
-        "Precio USD", "Unidades por caja", "Orden de cant. De cajas", 
-        "Unidades totales", "Precio final USD"
+        "SKU", "Imagen", "Descripcion", "Tamaño del producto", "Precio USD", "Unidades por caja"
     ])
     
-    # Mostrar las primeras filas para depuración (puedes eliminar esta línea después de revisar)
-    st.write("Primeras filas del DataFrame:", df.head())
-    
-    # Verificar si las columnas necesarias están presentes
-    required_columns = ["SKU", "Descripcion", "Precio USD"]
-    for col in required_columns:
-        if col not in df.columns:
-            st.error(f"La columna '{col}' no se encontró en la hoja seleccionada.")
-            return pd.DataFrame()  # Retornar un DataFrame vacío en caso de error
+    # Limpiar las filas con datos incompletos si es necesario
+    df = df.dropna(subset=["SKU", "Descripcion", "Precio USD", "Unidades por caja"])  # Eliminar filas con datos faltantes en columnas críticas
     
     # Normalizar los datos
     df["descripcion_norm"] = df["Descripcion"].apply(quitar_acentos)
     
-    # Limpiar precios
+    # Limpiar precios (eliminando signos de dólar y comas)
     df["Precio USD"] = df["Precio USD"].apply(lambda x: float(str(x).replace("$", "").replace(",", "")) if isinstance(x, str) else x)
-    df["Precio final USD"] = df["Precio final USD"].apply(lambda x: float(str(x).replace("$", "").replace(",", "")) if isinstance(x, str) else x)
     
     return df
 
@@ -146,11 +128,7 @@ for _, row in df_page.iterrows():
     st.write(f"**Tamaño del producto:** {row['Tamaño del producto']}")
     st.write(f"**Precio USD:** ${row['Precio USD']:,.2f}")
     st.write(f"**Unidades por caja:** {row['Unidades por caja']}")
-    st.write(f"**Orden de cant. De cajas:** {row['Orden de cant. De cajas']}")
-    st.write(f"**Unidades totales:** {row['Unidades totales']}")
-    st.write(f"**Precio final USD:** ${row['Precio final USD']:,.2f}")
     st.markdown("---")
-
 
 
 
