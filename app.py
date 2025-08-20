@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
 from openpyxl import load_workbook
+from openpyxl.drawing.image import Image
 from pathlib import Path
 import unicodedata
 import requests
 import tempfile
 import math
+from io import BytesIO
 
 # --- Funciones base de tu código ---
 
@@ -31,15 +33,23 @@ def load_products_from_sheet(xls_path: str, sheet_name: str) -> pd.DataFrame:
     
     # Leer las filas a partir de la fila 3 (suponiendo que las primeras filas son encabezados)
     rows = []
+    images = {}  # Diccionario para almacenar las imágenes
+
     for idx, row in enumerate(ws.iter_rows(min_row=3, values_only=True), start=3):
         if not row[0]:  # Si no hay SKU, se detiene
             break
         # Extraer solo las columnas necesarias (SKU, Imagen, Descripción, etc.)
         sku, imagen, descripcion, tamaño, precio_usd, unidades_por_caja, *resto = row[:7]
+
+        # Buscar imágenes embebidas en la hoja
+        for img in ws._images:
+            if img.anchor._from.col == 1 and img.anchor._from.row == idx - 1:  # Relacionar con la fila
+                img_bytes = img._data()
+                images[sku] = img_bytes  # Almacenar la imagen en un diccionario con SKU como clave
         
         # Filtramos solo las columnas necesarias
         rows.append([sku, imagen, descripcion, tamaño, precio_usd, unidades_por_caja])
-    
+
     # Crear DataFrame con las columnas especificadas
     df = pd.DataFrame(rows, columns=[
         "SKU", "Imagen", "Descripcion", "Tamaño del producto", "Precio USD", "Unidades por caja"
@@ -54,7 +64,7 @@ def load_products_from_sheet(xls_path: str, sheet_name: str) -> pd.DataFrame:
     # Limpiar precios (eliminando signos de dólar y comas)
     df["Precio USD"] = df["Precio USD"].apply(lambda x: float(str(x).replace("$", "").replace(",", "")) if isinstance(x, str) else x)
     
-    return df
+    return df, images
 
 # --- Variables principales ---
 
@@ -74,7 +84,7 @@ sheet_names = wb.sheetnames  # Obtener los nombres de las hojas
 sheet_name = st.selectbox("Selecciona la línea de productos:", sheet_names)
 
 # Cargar los productos desde la hoja seleccionada
-df_base = load_products_from_sheet(str(xls_path), sheet_name)
+df_base, images = load_products_from_sheet(str(xls_path), sheet_name)
 
 if df_base.empty:
     st.stop()  # Detener la ejecución si no se encuentran datos válidos
@@ -149,9 +159,10 @@ for _, row in df_page.iterrows():
     st.write(f"**Precio USD:** ${row['Precio USD']:,.2f}")
     st.write(f"**Unidades por caja:** {row['Unidades por caja']}")
     
-    # Mostrar imagen (si existe)
-    if row['Imagen']:
-        st.image(row['Imagen'], caption=row['Descripcion'], use_column_width=True)
+    # Mostrar imagen (si existe en el diccionario de imágenes)
+    if row['SKU'] in images:
+        img_bytes = images[row['SKU']]
+        st.image(img_bytes, caption=row['Descripcion'], use_column_width=True)
     
     # Campo para ingresar cantidad de cajas
     cantidad = st.number_input(f"Cantidad de {row['SKU']}", min_value=1, max_value=100, value=1, step=1, key=row['SKU'])
@@ -164,6 +175,7 @@ for _, row in df_page.iterrows():
 
 # Mostrar el carrito
 show_cart()
+
 
 
 
