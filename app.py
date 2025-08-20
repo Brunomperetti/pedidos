@@ -162,9 +162,13 @@ for _, row in df_page.iterrows():
     # Mostrar imagen (si existe en el diccionario de imágenes)
     if row['SKU'] in images:
         img_bytes = images[row['SKU']]
-        # Redimensionar la imagen antes de mostrarla
         image = PILImage.open(BytesIO(img_bytes))  # Cargar la imagen desde los bytes
-        image = image.resize((300, 300))  # Redimensionar la imagen a un tamaño específico (300x300)
+        
+        # Mantener la relación de aspecto sin distorsionar, y redimensionar la imagen
+        max_width = 300
+        max_height = 300
+        image.thumbnail((max_width, max_height))  # Redimensionar manteniendo la relación de aspecto
+        
         st.image(image, caption=row['Descripcion'], use_container_width=True)
     
     # Campo para ingresar cantidad de cajas
