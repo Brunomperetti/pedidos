@@ -117,7 +117,11 @@ def show_cart():
         st.write("### Carrito de compras")
         cart_df = pd.DataFrame(st.session_state["cart"])
         st.write(cart_df)
-        total = sum(item["Precio"] * item["Cantidad"] for item in st.session_state["cart"])
+        
+        # Calcular el total correctamente sumando por cada producto
+        total = 0
+        for item in st.session_state["cart"]:
+            total += item["Precio"] * item["Cantidad"]  # Sumar el total considerando cantidad y precio por unidad
         st.write(f"**Total: ${total:,.2f}**")
     else:
         st.write("### El carrito está vacío.")
@@ -137,7 +141,9 @@ def generate_pdf(cart_items):
     for item in cart_items:
         c.drawString(30, y_position, f"SKU: {item['SKU']}")
         c.drawString(100, y_position, f"Nombre: {item['Nombre']}")
-        c.drawString(300, y_position, f"Precio: ${item['Precio']:.2f}")
+        c.drawString(300, y_position, f"Precio unitario: ${item['Precio']:.2f}")
+        c.drawString(450, y_position, f"Cantidad: {item['Cantidad']}")
+        c.drawString(550, y_position, f"Precio total: ${item['Precio'] * item['Cantidad']:.2f}")
         y_position -= line_height
         
         if y_position < 100:
@@ -189,23 +195,18 @@ for _, row in df_page.iterrows():
     st.write(f"**Tamaño del producto:** {row['Tamaño del producto']}")
     st.write(f"**Precio USD:** ${row['Precio USD']:,.2f}")
     st.write(f"**Unidades por caja:** {row['Unidades por caja']}")
-
-    # Mostrar imagen (si existe en el diccionario de imágenes)
+    
+    # Mostrar imagen
     if row['SKU'] in images:
-        img_bytes = images[row['SKU']]
-        st.image(img_bytes, caption=row['Descripcion'], width=150)  # Ajustar tamaño de imagen a 150px de ancho
+        st.image(images[row['SKU']], width=100)  # Ajustar el tamaño de la imagen
     
-    # Campo para ingresar cantidad de cajas
-    cantidad = st.number_input(f"Cantidad de {row['SKU']}", min_value=1, max_value=100, value=1, step=1, key=row['SKU'])
-    
-    # Calcular el precio total basado en la cantidad de cajas y el precio por unidad
-    total_price = row["Precio USD"] * row["Unidades por caja"] * cantidad
-    st.write(f"**Precio Total (USD):** ${total_price:,.2f}")
+    cantidad = st.number_input(f"Cantidad para {row['SKU']}", min_value=1, step=1, key=f"qty_{row['SKU']}")
     
     # Botón para agregar al carrito
     if st.button(f"Agregar {row['SKU']} al carrito", key=f"add_{row['SKU']}"):
-        add_to_cart(row['SKU'], row['Descripcion'], total_price, cantidad)
-    
+        total_price = row["Precio USD"] * row["Unidades por caja"]
+        add_to_cart(row["SKU"], row["Descripcion"], total_price, cantidad)
+
     st.markdown("---")
 
 # Mostrar el carrito
