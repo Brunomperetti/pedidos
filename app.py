@@ -155,7 +155,7 @@ for _, row in df_page.iterrows():
     st.write(f"**SKU:** {row['SKU']}")
     st.write(f"**Descripción:** {row['Descripcion']}")
     st.write(f"**Tamaño del producto:** {row['Tamaño del producto']}")
-    st.write(f"**Precio USD:** ${row['Precio USD']:,.2f}")
+    st.write(f"**Precio unitario (USD):** ${row['Precio USD']:,.2f}")
     st.write(f"**Unidades por caja:** {row['Unidades por caja']}")
     
     # Mostrar imagen (si existe en el diccionario de imágenes)
@@ -166,9 +166,13 @@ for _, row in df_page.iterrows():
     # Campo para ingresar cantidad de cajas
     cantidad = st.number_input(f"Cantidad de {row['SKU']}", min_value=1, max_value=100, value=1, step=1, key=row['SKU'])
     
+    # Calcular el precio total basado en la cantidad de cajas y el precio por unidad
+    total_price = row["Precio USD"] * row["Unidades por caja"] * cantidad
+    st.write(f"**Precio Total (USD):** ${total_price:,.2f}")
+    
     # Botón para agregar al carrito
     if st.button(f"Agregar {row['SKU']} al carrito", key=f"add_{row['SKU']}"):
-        add_to_cart(row['SKU'], row['Descripcion'], row['Precio USD'], cantidad)
+        add_to_cart(row['SKU'], row['Descripcion'], total_price, cantidad)
     
     st.markdown("---")
 
