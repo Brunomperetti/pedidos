@@ -7,6 +7,9 @@ import requests
 import tempfile
 import math
 from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from io import BytesIO
 
 # --- Funciones base de tu código ---
 
@@ -120,6 +123,38 @@ def show_cart():
     else:
         st.write("### El carrito está vacío.")
 
+# --- Función para generar PDF --- 
+
+def generate_pdf(cart_items):
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    c.setFont("Helvetica", 12)
+    
+    c.drawString(30, 750, "Pedido - Catálogo Millex")
+    c.drawString(30, 735, f"Fecha: {pd.Timestamp.now().strftime('%d/%m/%Y')}")
+    
+    y_position = 710
+    for item in cart_items:
+        c.drawString(30, y_position, f"SKU: {item['SKU']}")
+        c.drawString(100, y_position, f"Nombre: {item['Nombre']}")
+        c.drawString(300, y_position, f"Precio: ${item['Precio']}")
+        c.drawString(400, y_position, f"Cantidad: {item['Cantidad']}")
+        total_price = item["Precio"] * item["Cantidad"]
+        c.drawString(500, y_position, f"Total: ${total_price:,.2f}")
+        y_position -= 20
+        
+        if y_position < 100:
+            c.showPage()  # Si estamos cerca del final de la página, agregamos una nueva
+            c.setFont("Helvetica", 12)
+            y_position = 750
+    
+    total = sum(item["Precio"] * item["Cantidad"] for item in cart_items)
+    c.drawString(30, y_position - 20, f"**Total del Pedido: ${total:,.2f}**")
+    
+    c.save()
+    buffer.seek(0)
+    return buffer
+
 # --- Paginación simple ---
 
 ITEMS_PER_PAGE = 20
@@ -179,6 +214,15 @@ for _, row in df_page.iterrows():
 # Mostrar el carrito
 show_cart()
 
+# Botón para descargar el carrito como PDF
+if st.button("Descargar PDF del Pedido"):
+    pdf_buffer = generate_pdf(st.session_state["cart"])
+    st.download_button(
+        label="Descargar Pedido PDF",
+        data=pdf_buffer,
+        file_name="pedido_catálogo_millex.pdf",
+        mime="application/pdf"
+    )
 
 
 
